@@ -51,6 +51,10 @@ MemRefType convertCnmBufferToMemRefType(cnm::BufferType bufferType) {
 void convertLaunchParameter(ConversionPatternRewriter &rewriter, Location loc,
                             Value buffer, ValueRange threadIds,
                             BlockArgument arg) {
+  if (!buffer.getType().dyn_cast<cnm::BufferType>()) {
+    return;
+  }
+
   const BufferType bufferType = buffer.getType().dyn_cast<cnm::BufferType>();
   const MemRefType memrefType = convertCnmBufferToMemRefType(bufferType);
 
