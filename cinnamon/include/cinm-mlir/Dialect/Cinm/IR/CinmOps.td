@@ -129,7 +129,6 @@ def Cinm_GemmOp : Cinm_Op<"op.gemm",
   let builders=[
     OpBuilder<(ins "Value":$left, "Value":$right),
       "build($_builder, $_state, ValueRange {left, right});">
-
   ];
 }
 
@@ -143,10 +142,7 @@ def Cinm_GemvOp : Cinm_Op<"op.gemv", [Pure, InferShapedTypeOpAdaptor, DeclareOpI
   let assemblyFormat = "$left `,` $right attr-dict `:` `(` type($left) `,` type($right) `)` `->` type($result)";
 }
 
-
-/// we infer the shape because verifying correctness of a
-/// hardcoded return type is as hard as inferring it.
-def Cinm_TransposeOp : Cinm_Op<"op.transpose", [InferShapedTypeOpAdaptor, Pure]> {
+def Cinm_TransposeOp : Cinm_Op<"op.transpose", [Pure, InferShapedTypeOpAdaptor]> {
   let summary = "Transpose operator";
 
   let description = [{
@@ -154,17 +150,15 @@ def Cinm_TransposeOp : Cinm_Op<"op.transpose", [InferShapedTypeOpAdaptor, Pure]>
   }];
 
   let arguments = (ins
-    AnyRankedTensor:$input1,
-    AnyRankedTensor:$perms // TODO
+    AnyRankedTensor:$input,
+    DenseI64ArrayAttr:$perms
   );
 
   let results = (
-    outs AnyRankedTensor:$output
+    outs AnyRankedTensor:$result
   );
 
-  let extraClassDeclaration = [{
-    LogicalResult getConstantPerms(llvm::SmallVector<int64_t> &perms);
-  }];
+  let assemblyFormat = "$input $perms attr-dict `:` type($input) `->` type($result)";
 }
 
 

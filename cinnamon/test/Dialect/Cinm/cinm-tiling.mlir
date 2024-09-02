@@ -66,3 +66,5 @@ func.func @adds(%a: tensor<1024xi32>, %s: i32) -> tensor<1024xi32> {
 	}
 	return %res: tensor<1024xi32>
 }
+
+// -----

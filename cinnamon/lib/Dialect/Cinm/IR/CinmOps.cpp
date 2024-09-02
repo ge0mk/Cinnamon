@@ -97,7 +97,6 @@ cinm::ComputeOp getEnclosingComputeBlock(Operation *op) {
   //  return context->emitError("operand types are not compatible");
 }
 
-
 ::mlir::LogicalResult GemvOp::inferReturnTypeComponents(
     ::mlir::MLIRContext *, std::optional<::mlir::Location>, Adaptor adaptor,
     ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>
@@ -144,72 +143,17 @@ cinm::ComputeOp getEnclosingComputeBlock(Operation *op) {
     ::mlir::MLIRContext *, std::optional<::mlir::Location>, Adaptor adaptor,
     ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>
         &inferredReturnShapes) {
-  ShapeAdaptor inputShape(adaptor.getInput1().getType());
-  ShapeAdaptor permsShape(adaptor.getPerms().getType());
+  ShapeAdaptor inputShape(adaptor.getInput().getType());
 
-  // If input rank and permutation length is unknown, the output rank is
-  // unknown.
-  if (!inputShape.hasRank() || !permsShape.hasRank() ||
-      permsShape.isDynamicDim(0)) {
-    inferredReturnShapes.push_back(ShapedTypeComponents());
-    return success();
-  }
-
-  // This would imply the number of permutations does not match the rank of the
-  // input which is illegal.
-  if (permsShape.getDimSize(0) != inputShape.getRank()) {
+  if (inputShape.getRank() != 2) {
     return failure();
   }
 
-  // Without the input dims we cannot determine the output dim sizes but we
-  // can determine the output rank.
-  SmallVector<int64_t> outputShape;
-  if (!inputShape.hasRank()) {
-    outputShape.resize(permsShape.getDimSize(0), ShapedType::kDynamic);
-    inferredReturnShapes.push_back(ShapedTypeComponents(outputShape));
-    return success();
-  }
-
-  // Rank-0 means no permutations matter.
-  if (inputShape.getRank() == 0) {
-    inferredReturnShapes.push_back(ShapedTypeComponents(outputShape));
-    return success();
-  }
-
-  // Check whether the input dimensions are all the same.
-  bool allTheSame = true;
-  for (int i = 1, s = inputShape.getRank(); i < s; i++) {
-    if (inputShape.getDimSize(0) != inputShape.getDimSize(i)) {
-      allTheSame = false;
-      break;
-    }
-  }
-
-  // If all of the input dimensions are the same we don't care about the
-  // permutation.
-  if (allTheSame) {
-    outputShape.resize(inputShape.getRank(), inputShape.getDimSize(0));
-    inferredReturnShapes.push_back(ShapedTypeComponents(outputShape));
-    return success();
-  }
-
-  outputShape.resize(inputShape.getRank(), ShapedType::kDynamic);
-  // If the permuations are a constant we can directly determine the output
-  // shape.
-  DenseIntElementsAttr attr;
-  if (matchPattern(adaptor.getPerms(), m_Constant(&attr)) &&
-      attr.getType().getRank() == 1) {
-    ShapeAdaptor permShape = attr;
-    outputShape.reserve(inputShape.getRank());
-    for (int i = 0, s = inputShape.getRank(); i < s; i++) {
-      outputShape[i] = inputShape.getDimSize(permShape.getDimSize(i));
-    }
-  }
-
+  SmallVector<int64_t> outputShape{inputShape.getDimSize(1),
+                                   inputShape.getDimSize(0)};
   inferredReturnShapes.push_back(ShapedTypeComponents(outputShape));
   return success();
 }
-
 
 } // namespace cinm
 } // namespace mlir

@@ -765,6 +765,29 @@ struct ConvertCinmGemvToCnm : public OpConversionPattern<cinm::GemvOp> {
   }
 };
 
+struct ConvertCinmTransposeToCnm
+    : public OpConversionPattern<cinm::TransposeOp> {
+  using OpConversionPattern<cinm::TransposeOp>::OpConversionPattern;
+
+  ConvertCinmTransposeToCnm(MLIRContext *ctx)
+      : mlir::OpConversionPattern<cinm::TransposeOp>(ctx) {
+    this->setHasBoundedRewriteRecursion();
+  }
+
+  LogicalResult
+  matchAndRewrite(cinm::TransposeOp op,
+                  OpConversionPattern<cinm::TransposeOp>::OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto outputInit = rewriter.create<arith::ConstantOp>(
+        op.getLoc(), op.getResult().getType(),
+        rewriter.getZeroAttr(op.getResult().getType()));
+
+    rewriter.replaceOpWithNewOp<linalg::TransposeOp>(op, op.getInput(),
+                                                     outputInit, op.getPerms());
+    return success();
+  }
+};
+
 struct ConvertCinmReduceToCnm : public OpConversionPattern<cinm::ReduceOp> {
   using OpConversionPattern<cinm::ReduceOp>::OpConversionPattern;
   ConvertCinmReduceToCnm(MLIRContext *ctx)
@@ -871,6 +894,8 @@ void populateCinmRewritePatterns(RewritePatternSet &patterns,
   // matmul
   patterns.insert<ConvertCinmGemmToCnm>(ctx);
   patterns.insert<ConvertCinmGemvToCnm>(ctx);
+  // transpose
+  patterns.insert<ConvertCinmTransposeToCnm>(ctx);
   // reduce
   patterns.insert<ConvertCinmReduceToCnm>(ctx);
 }
