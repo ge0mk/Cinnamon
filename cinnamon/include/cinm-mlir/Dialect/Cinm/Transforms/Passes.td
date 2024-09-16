@@ -27,4 +27,24 @@ def CinmTilingPass: Pass<"cinm-tiling"> {
   ];
 }
 
+def CinmLoopPermutationPass: Pass<"cinm-loop-permutation"> {
+  let summary = "Applys loop permutation";
+  let description = [{}];
+
+  let dependentDialects = [
+    "mlir::LLVM::LLVMDialect",
+    "mlir::affine::AffineDialect",
+  ];
+}
+
+def CinmLoopFusionPass: Pass<"cinm-loop-fusion"> {
+  let summary = "Applys loop fusion";
+  let description = [{}];
+
+  let dependentDialects = [
+    "mlir::LLVM::LLVMDialect",
+    "mlir::affine::AffineDialect",
+  ];
+}
+
 #endif // CINM_TRANSFORM_PASSES

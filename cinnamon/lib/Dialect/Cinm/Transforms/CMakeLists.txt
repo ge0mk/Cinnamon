@@ -1,4 +1,5 @@
 add_mlir_dialect_library(CinmTransforms
+    LoopOptimizationPasses.cpp
     TilingPass.cpp
 
 DEPENDS
