@@ -3,8 +3,6 @@
 #include <defs.h>
 #include <mram.h>
 #include <perfcounter.h>
-#include <stdint.h>
-#include <stdio.h>
 
 #define MRAMToWRAM 1
 #define WRAMToMRAM 2

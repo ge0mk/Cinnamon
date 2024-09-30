@@ -13,6 +13,7 @@
 #include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
 #include "mlir/Dialect/EmitC/IR/EmitC.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -28,6 +29,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/FormatVariadic.h"
 #include <llvm/ADT/SmallVector.h>
+#include <llvm/IR/Constants.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/raw_ostream.h>
 #include <mlir/IR/SymbolTable.h>
@@ -306,7 +308,7 @@ static LogicalResult printOperation(CppEmitter &emitter,
   } else if (dyn_cast<FloatType>(type)) {
     size_string = " * sizeof(float)";
   }
-  os << emitter.getOrCreateName(memcpyOp->getOperand(0));
+  os << "(int*)" << emitter.getOrCreateName(memcpyOp->getOperand(0));
   os << ", ";
   os << emitter.getOrCreateName(memcpyOp->getOperand(1));
   os << size_string << ", ";
@@ -314,14 +316,6 @@ static LogicalResult printOperation(CppEmitter &emitter,
   os << size_string << ")";
 
   return success();
-}
-
-static LogicalResult printOperation(CppEmitter &emitter,
-                                    arith::ConstantOp constantOp) {
-  Operation *operation = constantOp.getOperation();
-  Attribute value = constantOp.getValue();
-
-  return printConstantOp(emitter, operation, value);
 }
 
 static LogicalResult printOperation(CppEmitter &emitter,
@@ -346,16 +340,210 @@ static LogicalResult printBinaryOperation(CppEmitter &emitter,
   return success();
 }
 
-static LogicalResult printOperation(CppEmitter &emitter, arith::AddIOp addOp) {
-  Operation *operation = addOp.getOperation();
+// arith ops
 
-  return printBinaryOperation(emitter, operation, "+");
+static LogicalResult printOperation(CppEmitter &emitter, arith::AddFOp op) {
+  return printBinaryOperation(emitter, op.getOperation(), "+");
 }
 
-static LogicalResult printOperation(CppEmitter &emitter, arith::MulIOp mulOp) {
-  Operation *operation = mulOp.getOperation();
+static LogicalResult printOperation(CppEmitter &emitter, arith::AddIOp op) {
+  return printBinaryOperation(emitter, op.getOperation(), "+");
+}
 
-  return printBinaryOperation(emitter, operation, "*");
+static LogicalResult printOperation(CppEmitter &emitter,
+                                    arith::AddUIExtendedOp op) {
+  return printBinaryOperation(emitter, op.getOperation(), "+");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::AndIOp op) {
+  return printBinaryOperation(emitter, op.getOperation(), "&");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::BitcastOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter,
+                                    arith::CeilDivSIOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter,
+                                    arith::CeilDivUIOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::CmpFOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::CmpIOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::ConstantOp op) {
+  return printConstantOp(emitter, op.getOperation(), op.getValue());
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::DivFOp op) {
+  return printBinaryOperation(emitter, op.getOperation(), "/");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::DivSIOp op) {
+  return printBinaryOperation(emitter, op.getOperation(), "/");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::DivUIOp op) {
+  return printBinaryOperation(emitter, op.getOperation(), "/");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::ExtFOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::ExtSIOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::ExtUIOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter,
+                                    arith::FloorDivSIOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::FPToSIOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::FPToUIOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter,
+                                    arith::IndexCastOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter,
+                                    arith::IndexCastUIOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::MaximumFOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::MaxNumFOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::MaxSIOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::MaxUIOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::MinimumFOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::MinNumFOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::MinSIOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::MinUIOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::MulFOp op) {
+  return printBinaryOperation(emitter, op.getOperation(), "*");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::MulIOp op) {
+  return printBinaryOperation(emitter, op.getOperation(), "*");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter,
+                                    arith::MulSIExtendedOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter,
+                                    arith::MulUIExtendedOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::NegFOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::OrIOp op) {
+  return printBinaryOperation(emitter, op.getOperation(), "|");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::RemFOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::RemSIOp op) {
+  return printBinaryOperation(emitter, op.getOperation(), "%");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::RemUIOp op) {
+  return printBinaryOperation(emitter, op.getOperation(), "%");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::SelectOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::ShLIOp op) {
+  return printBinaryOperation(emitter, op.getOperation(), "<<");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::ShRSIOp op) {
+  return printBinaryOperation(emitter, op.getOperation(), ">>");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::ShRUIOp op) {
+  return printBinaryOperation(emitter, op.getOperation(), ">>");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::SIToFPOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::SubFOp op) {
+  return printBinaryOperation(emitter, op.getOperation(), "-");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::SubIOp op) {
+  return printBinaryOperation(emitter, op.getOperation(), "-");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::TruncFOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::TruncIOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::UIToFPOp op) {
+  assert(false && "todo: implement op printer");
+}
+
+static LogicalResult printOperation(CppEmitter &emitter, arith::XOrIOp op) {
+  return printBinaryOperation(emitter, op.getOperation(), "^");
 }
 
 static LogicalResult printOperation(CppEmitter &emitter,
@@ -1037,7 +1225,103 @@ LogicalResult CppEmitter::emitOperation(Operation &op, bool trailingSemicolon) {
           .Case<scf::ForOp, scf::IfOp, scf::YieldOp>(
               [&](auto op) { return printOperation(*this, op); })
           // Arithmetic ops.
+          .Case<arith::AddFOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::AddIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::AddUIExtendedOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::AndIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::BitcastOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::CeilDivSIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::CeilDivUIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::CmpFOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::CmpIOp>(
+              [&](auto op) { return printOperation(*this, op); })
           .Case<arith::ConstantOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::DivFOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::DivSIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::DivUIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::ExtFOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::ExtSIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::ExtUIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::FloorDivSIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::FPToSIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::FPToUIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::IndexCastOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::IndexCastUIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::MaximumFOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::MaxNumFOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::MaxSIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::MaxUIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::MinimumFOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::MinNumFOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::MinSIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::MinUIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::MulFOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::MulIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::MulSIExtendedOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::MulUIExtendedOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::NegFOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::OrIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::RemFOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::RemSIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::RemUIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::SelectOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::ShLIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::ShRSIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::ShRUIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::SIToFPOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::SubFOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::SubIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::TruncFOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::TruncIOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::UIToFPOp>(
+              [&](auto op) { return printOperation(*this, op); })
+          .Case<arith::XOrIOp>(
               [&](auto op) { return printOperation(*this, op); })
           .Case<upmem::TaskletIDOp>(
               [&](auto op) { return printOperation(*this, op); })
