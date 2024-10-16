@@ -26,6 +26,7 @@
   SOFTWARE.
 */
 
+#include <cassert>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -274,7 +275,7 @@ void *align64(void *ptr) {
   return (void *)((char *)ptr + (64 - (intptr_t)ptr % 64));
 }
 
-extern "C" float *rmsnorm(float *v, float *w);
+extern "C" float *rmsnorm(float *v, float *w) {}
 
 void rmsnorm_cpu(float *o, float *x, float *weight, int size) {
   // calculate sum of squares
@@ -1127,6 +1128,33 @@ void error_usage() {
 }
 
 int main(int argc, char *argv[]) {
+  float *i1 = (float *)malloc(131072 * sizeof(float));
+  float *i2 = (float *)malloc(131072 * sizeof(float));
+
+  unsigned long long state = 1234;
+  for (size_t i = 0; i < 131072; i++) {
+    i1[i] = i2[i] = random_f32(&state);
+  }
+
+  const clock_t upmem_start = clock();
+  softmax2(i1, 131072);
+  const clock_t upmem_end = clock();
+
+  printf("upmem took %fs\n",
+         (float)(upmem_end - upmem_start) / (float)CLOCKS_PER_SEC);
+
+  const clock_t cpu_start = clock();
+  softmax_cpu(i2, 131072);
+  const clock_t cpu_end = clock();
+
+  printf("cpu took %fs\n",
+         (float)(cpu_end - cpu_start) / (float)CLOCKS_PER_SEC);
+
+  for (size_t i = 0; i < 131072; i++) {
+    assert(fabs(i1[i] - i2[i]) < 0.0001);
+  }
+
+  return 0;
 
   // default parameters
   char *checkpoint_path = NULL; // e.g. out/model.bin

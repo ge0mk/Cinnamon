@@ -119,8 +119,6 @@ upmem-to-llvm FILE *ARGS: (
 
 translate-mlir-to-llvmir FILE *ARGS: (
     cinm-translate FILE
-    "--debugify-level=locations"
-    "--profile-correlate=debug-info"
     "--mlir-to-llvmir"
     ARGS
 )
