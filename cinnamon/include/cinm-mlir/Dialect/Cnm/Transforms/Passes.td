@@ -74,4 +74,19 @@ def CnmHoistWorkgroupsPass : Pass<"cnm-hoist-workgroups", "func::FuncOp"> {
 }
 
 
+def CnmMergeWorkgroupsPass : Pass<"cnm-merge-workgroups", ""> {
+  let summary = "Merge workgroups, when they share the same dimensions";
+  let description = [{
+  }];
+  let dependentDialects = [];
+}
+
+def CnmMergeLaunchOpsPass : Pass<"cnm-merge-launch-ops", ""> {
+  let summary = "Merge sequential launch operations, when they run on the same workgroup";
+  let description = [{
+  }];
+  let dependentDialects = [];
+}
+
+
 #endif // CNM_TRANSFORM_PASSES

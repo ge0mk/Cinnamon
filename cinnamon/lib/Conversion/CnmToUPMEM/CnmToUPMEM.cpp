@@ -64,7 +64,7 @@ struct ConvertCnmWorkgroupToUPMEM
       return op->emitOpError(
           "cannot be converted to UPMEM dialect. "
           "UPMEM translation requires workgroup with 3 dimensions.");
-    rewriter.replaceOpWithNewOp<upmem::AllocDPUsOp>(
+    auto upmemOp = rewriter.replaceOpWithNewOp<upmem::AllocDPUsOp>(
         op, getTypeConverter()->convertType(op.getType()));
 
     SmallVector<cnm::AllocOp> allocs;
@@ -88,6 +88,15 @@ struct ConvertCnmWorkgroupToUPMEM
       // buffer offsets must be 8 byte aligned
       dpuMemOffset = alignTo(dpuMemOffset, 8);
     }
+
+    upmem::UPMEMModuleOp kernelModule = getOrCreateUPMEMKernelModule(rewriter);
+    rewriter.setInsertionPointToEnd(&kernelModule.getBodyRegion().front());
+    const std::string name =
+        "empty_" + std::to_string(upmemOp.getType().getNumRanks()) + "_" +
+        std::to_string(upmemOp.getType().getNumDpusPerRank()) + "_" +
+        std::to_string(upmemOp.getType().getNumTaskletsPerDpu());
+    const upmem::DeviceHierarchyType hierarchy = upmemOp.getType();
+    (void)getOrCreateUPMEMKernelFunc(rewriter, name, hierarchy);
 
     return success();
   }

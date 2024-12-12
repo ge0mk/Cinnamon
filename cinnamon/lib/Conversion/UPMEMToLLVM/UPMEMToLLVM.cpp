@@ -44,6 +44,7 @@
 #include <mlir/Support/LogicalResult.h>
 #include <mlir/Transforms/DialectConversion.h>
 #include <optional>
+#include <string>
 
 namespace mlir {
 #define GEN_PASS_DEF_CONVERTUPMEMTOLLVMPASS
@@ -227,27 +228,10 @@ public:
   explicit AllocDPUOpToFuncCallLowering(LLVMTypeConverter &lowering)
       : ConvertOpToLLVMPattern<upmem::AllocDPUsOp>(lowering) {}
 
-  FailureOr<Value>
-  createConstantForDpuProgramName(ConversionPatternRewriter &rewriter,
-                                  upmem::AllocDPUsOp op) const {
-
-    StringRef dpuProgramName;
-    for (auto user : op->getUsers()) {
-      if (auto launch = llvm::dyn_cast_or_null<upmem::LaunchFuncOp>(user)) {
-        if (!dpuProgramName.empty() && dpuProgramName != launch.getKernelName())
-          return op->emitError(
-              "has several upmem.launch_func op with a different kernel");
-        dpuProgramName = launch.getKernelName();
-      }
-    }
-    if (dpuProgramName.empty())
-      return op->emitError("has no upmem.launch_func op");
-
-    LLVM::GlobalOp constant =
-        declareStringConstant(op->getParentOfType<ModuleOp>(), op->getLoc(),
-                              dpuProgramName, true, "dpu_program");
-    Value result = rewriter.create<LLVM::AddressOfOp>(op->getLoc(), constant);
-    return success(result);
+  std::string getEmptyProgramName(DeviceHierarchyType hierarchy) const {
+    return "empty_" + std::to_string(hierarchy.getNumRanks()) + "_" +
+           std::to_string(hierarchy.getNumDpusPerRank()) + "_" +
+           std::to_string(hierarchy.getNumTaskletsPerDpu());
   }
 
   LogicalResult
@@ -260,22 +244,31 @@ public:
     const Value dpuCount = rewriter.create<LLVM::ConstantOp>(
         op.getLoc(), rewriter.getI32IntegerAttr(hierarchyShape[1]));
 
-    const auto maybeFailed = createConstantForDpuProgramName(rewriter, op);
-    if (failed(maybeFailed))
-      return failure();
-    const Value dpuProgramPath = *maybeFailed;
+    // load empty program for this workgroup because upmem_push_xfer requires a
+    // program to be loaded
+    const Value dpuProgramPath = rewriter.create<LLVM::AddressOfOp>(
+        op->getLoc(),
+        declareStringConstant(op->getParentOfType<ModuleOp>(), op->getLoc(),
+                              getEmptyProgramName(op.getType()), true,
+                              "dpu_program"));
+
+    // void upmemrt_dpu_load(struct dpu_set_t *, const char *);
+    LLVM::LLVMFuncOp loadFunc =
+        appendOrGetFuncOp("upmemrt_dpu_load", getVoidType(),
+                          {getTypeConverter()->convertType(op.getType()),
+                           untypedPtrType(getContext())},
+                          op);
 
     // struct dpu_set_t *upmemrt_dpu_alloc(int32_t num_ranks, int32_t
     // num_dpus);
     Type resultType = LLVM::LLVMPointerType::get(rewriter.getContext(), 0);
     LLVM::LLVMFuncOp funcOp =
         appendOrGetFuncOp("upmemrt_dpu_alloc", resultType,
-                          {rewriter.getI32Type(), rewriter.getI32Type(),
-                           untypedPtrType(getContext())},
-                          op);
+                          {rewriter.getI32Type(), rewriter.getI32Type()}, op);
 
-    rewriter.replaceOpWithNewOp<LLVM::CallOp>(
-        op, funcOp, ValueRange{rankCount, dpuCount, dpuProgramPath});
+    rewriter.replaceOpWithNewOp<LLVM::CallOp>(op, funcOp,
+                                              ValueRange{rankCount, dpuCount});
+
     return success();
   }
 };
@@ -451,19 +444,47 @@ public:
   explicit LaunchFuncOpToFuncCallLowering(LLVMTypeConverter &lowering)
       : ConvertOpToLLVMPattern<upmem::LaunchFuncOp>(lowering) {}
 
+  FailureOr<Value>
+  createConstantForDpuProgramName(ConversionPatternRewriter &rewriter,
+                                  upmem::LaunchFuncOp op) const {
+    StringRef dpuProgramName = op.getKernelName();
+    LLVM::GlobalOp constant =
+        declareStringConstant(op->getParentOfType<ModuleOp>(), op->getLoc(),
+                              dpuProgramName, true, "dpu_program");
+    Value result = rewriter.create<LLVM::AddressOfOp>(op->getLoc(), constant);
+    return success(result);
+  }
+
   LogicalResult
   matchAndRewrite(upmem::LaunchFuncOp op,
                   typename upmem::LaunchFuncOp ::Adaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
 
+    // load program
+    const auto dpuProgramPath = createConstantForDpuProgramName(rewriter, op);
+    if (failed(dpuProgramPath))
+      return failure();
+
+    // void upmemrt_dpu_load(struct dpu_set_t *, const char *);
+    LLVM::LLVMFuncOp loadFunc = appendOrGetFuncOp(
+        "upmemrt_dpu_load", getVoidType(),
+        {getTypeConverter()->convertType(op.getHierarchy().getType()),
+         untypedPtrType(getContext())},
+        op);
+
+    rewriter.create<LLVM::CallOp>(
+        op.getLoc(), loadFunc,
+        ValueRange{adaptor.getHierarchy(), *dpuProgramPath});
+
+    // launch kernel
     Type resultType = LLVM::LLVMVoidType::get(rewriter.getContext());
 
-    // void upmemrt_dpu_launch(struct dpu_set_t *void_dpu_set) {
-    LLVM::LLVMFuncOp funcOp = appendOrGetFuncOp(
+    // void upmemrt_dpu_launch(struct dpu_set_t *dpu_set);
+    LLVM::LLVMFuncOp launchFunc = appendOrGetFuncOp(
         "upmemrt_dpu_launch", resultType,
         {getTypeConverter()->convertType(op.getHierarchy().getType())}, op);
 
-    rewriter.replaceOpWithNewOp<LLVM::CallOp>(op, funcOp,
+    rewriter.replaceOpWithNewOp<LLVM::CallOp>(op, launchFunc,
                                               adaptor.getHierarchy());
     return success();
   }

@@ -32,7 +32,8 @@ void upmemrt_dpu_gather(struct dpu_set_t *dpu_set, void *host_buffer,
                         size_t offset_in_dpu_bytes,
                         size_t (*base_offset)(size_t));
 
-struct dpu_set_t *upmemrt_dpu_alloc(int32_t num_ranks, int32_t num_dpus,
-                                    const char *dpu_binary_path);
+struct dpu_set_t *upmemrt_dpu_alloc(int32_t num_ranks, int32_t num_dpus);
 
-void upmemrt_dpu_launch(struct dpu_set_t *void_dpu_set);
+void upmemrt_dpu_load(struct dpu_set_t *dpu_set, const char *dpu_binary_path);
+
+void upmemrt_dpu_launch(struct dpu_set_t *dpu_set);
